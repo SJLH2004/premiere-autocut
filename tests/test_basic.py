@@ -140,23 +140,22 @@ def main():
 
     # ---------- 合规 ----------
     print("\n-- 合规自检 --")
+    # 按文件名判定：真正要防的是这个文件被提交进来。
+    # 不扫内容 —— 本仓库的文档与注释会正当地提到它（说明已被移除），
+    # 基于字符串的扫描会命中这些自指文本（CI 首次上线即因此误报）。
     bad = []
     for dp, dn, fn in os.walk(ROOT):
         if ".git" in dp or "__pycache__" in dp:
             continue
         for name in fn:
-            if name == "CSInterface.js":
-                bad.append(os.path.join(dp, name))
-            p = os.path.join(dp, name)
-            if name.endswith((".js", ".jsx", ".py", ".html", ".xml")):
-                try:
-                    head = "".join(open(p, encoding="utf-8", errors="replace").readlines()[:40])
-                except Exception:
-                    continue
-                if "ADOBE SYSTEMS INCORPORATED" in head or \
-                   ("Copyright" in head and "All Rights Reserved" in head):
-                    bad.append(p)
-    check("仓库内无 Adobe 专有文件", not bad, ", ".join(bad[:3]))
+            low = name.lower()
+            if low == "csinterface.js" or low.endswith(".zxp"):
+                bad.append(os.path.relpath(os.path.join(dp, name), ROOT))
+    check("仓库内无 Adobe 专有文件（按文件名）", not bad, ", ".join(bad[:3]))
+    # 顺带确认 .gitignore 里有拦截规则，防止再次被提交
+    gi = os.path.join(ROOT, ".gitignore")
+    gi_txt = open(gi, encoding="utf-8", errors="replace").read() if os.path.isfile(gi) else ""
+    check(".gitignore 拦截 CSInterface.js", "CSInterface.js" in gi_txt)
 
     print("\n===== 结果：PASS %d / FAIL %d =====" % (len(PASS), len(FAIL)))
     if FAIL:

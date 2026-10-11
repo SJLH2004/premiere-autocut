@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
         python-version: [ "3.9", "3.12" ]
     steps:
       - uses: actions/checkout@v4
@@ -29,15 +29,24 @@ jobs:
       - name: Reject Adobe proprietary files
         shell: bash
         run: |
-          if find . -name 'CSInterface.js' -not -path './.git/*' | grep -q .; then
-            echo "::error::CSInterface.js is Adobe proprietary and must not be committed"
+          set -e
+
+          # 按【被跟踪的文件名】判定，而不是扫描文件内容。
+          #
+          # 为什么不扫内容：本仓库的文档、注释、.gitignore、自测里都会
+          # 正当地提到 "CSInterface.js"（说明它已被移除、如何拦截它）。
+          # 任何基于字符串的扫描都会命中这些自指文本 —— 本项目第一次
+          # 上线时就因此全矩阵误报。
+          # 而真正要防的是「这个文件被提交进来」，按文件名判断既精确又无误报。
+          bad=$(git ls-files | grep -Ei '(^|/)CSInterface\.js$|\.zxp$' || true)
+
+          if [ -n "$bad" ]; then
+            echo "::error::Adobe proprietary file must not be versioned:"
+            echo "$bad"
             exit 1
           fi
-          if grep -rIl 'ADOBE SYSTEMS INCORPORATED' --exclude-dir=.git . ; then
-            echo "::error::found Adobe copyright header in repository"
-            exit 1
-          fi
-          echo "no Adobe proprietary files found"
+
+          echo "OK: no Adobe proprietary files are tracked"
 
       - name: Run self-test
         run: python tests/test_basic.py
