@@ -19,12 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
---------------------------------------------------------------------------------
-关于依赖的许可（重要，请一并阅读 THIRD-PARTY.md）
---------------------------------------------------------------------------------
-本项目自身代码采用 MIT。但它运行时依赖 pymiere，而 pymiere 采用 GPLv3。
-因此：
-  * 仅「阅读源码」或「不使用 pymiere 的部分」不受影响；
-  * 若你基于本项目分发依赖 pymiere 的可执行作品，该作品整体应遵循 GPLv3；
-  * 本项目不分发、也不再分发任何 Adobe 专有文件（详见 THIRD-PARTY.md）。

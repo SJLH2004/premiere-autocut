@@ -146,10 +146,14 @@ python scripts/pr_build_timeline.py --export        # 搭完自动导出
 
 ## 许可
 
-- 本项目**自身代码**：[MIT](LICENSE)
-- 运行时依赖 `pymiere`：**GPLv3** ⚠️
-- **不分发任何 Adobe 专有文件**（原 `CSInterface.js` 已用自写的 `cep-bridge.js` 替代）
+| 范围 | 许可 |
+|---|---|
+| 本项目自身代码 | **MIT**（见 [LICENSE](LICENSE)） |
+| 运行时依赖 `pymiere` | **GPLv3** ⚠️ 传染性，见下 |
+| Adobe 专有文件 | **不分发**（原 `CSInterface.js` 已用自写的 `cep-bridge.js` 替代） |
 
-完整说明见 **[THIRD-PARTY.md](THIRD-PARTY.md)** —— 再分发前请读一遍。
+`LICENSE` 保持 MIT 原文以便工具正确识别；所有附加说明集中在
+**[THIRD-PARTY.md](THIRD-PARTY.md)** —— **再分发前请务必读一遍**，
+其中说明了为什么「整体分发依赖 pymiere 的作品」需要遵循 GPLv3。
 
 `Adobe`、`Premiere Pro` 是 Adobe 的商标。本项目为独立第三方工具，与 Adobe 无隶属关系。
