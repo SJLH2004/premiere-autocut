@@ -1,0 +1,30 @@
+MIT License
+
+Copyright (c) 2026 premiere-autocut contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--------------------------------------------------------------------------------
+关于依赖的许可（重要，请一并阅读 THIRD-PARTY.md）
+--------------------------------------------------------------------------------
+本项目自身代码采用 MIT。但它运行时依赖 pymiere，而 pymiere 采用 GPLv3。
+因此：
+  * 仅「阅读源码」或「不使用 pymiere 的部分」不受影响；
+  * 若你基于本项目分发依赖 pymiere 的可执行作品，该作品整体应遵循 GPLv3；
+  * 本项目不分发、也不再分发任何 Adobe 专有文件（详见 THIRD-PARTY.md）。

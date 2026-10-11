@@ -1,1 +1,36 @@
+# ---- 配置与隐私：绝对不要提交 ----
+config.json
+*.local.json
+
+# ---- 大文件：绝不提交 ----
+*.prproj
+*.prproj~*
+*.mov
+*.mp4
+*.MP4
+*.epr
+prproj_dump.xml
+export/
+代理原片对照表.json
+
+# ---- Adobe 专有文件：不得分发 ----
+# CSInterface.js 归 Adobe 所有，其许可禁止再分发。
+# 本仓库用自写的 cep/js/cep-bridge.js 替代，因此这里再设一道防线。
+CSInterface.js
+*.zxp
+
+# ---- 示例表为生成物，不入库 ----
+examples/shotlist.example.xlsx
+
+# ---- Python ----
 __pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,4 @@
+# 运行时依赖
+# 注意：pymiere 采用 GPLv3，详见 THIRD-PARTY.md
+pymiere>=1.4.0
+openpyxl>=3.0

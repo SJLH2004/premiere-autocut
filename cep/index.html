@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Pymiere Link</title>
+<script src="./js/cep-bridge.js"></script>
+<style>
+  body{margin:0;padding:14px;font:13px/1.6 "Segoe UI",sans-serif;background:#252526;color:#d4d4d4}
+  h3{margin:0 0 8px;font-size:15px;color:#fff;font-weight:600}
+  .ok{color:#4ec9b0}.err{color:#f48771}.warn{color:#dcdcaa}
+  code{background:#1e1e1e;padding:1px 5px;border-radius:3px;color:#ce9178;word-break:break-all}
+  .row{margin:5px 0}
+  .log{margin-top:10px;font:11px/1.45 Consolas,monospace;height:200px;overflow:auto;
+       background:#1e1e1e;padding:8px;border-radius:4px;color:#9cdcfe;white-space:pre-wrap}
+  button{background:#0e639c;color:#fff;border:0;padding:6px 12px;border-radius:3px;cursor:pointer;margin-top:8px}
+  button:hover{background:#1177bb}
+</style>
+</head>
+<body>
+
+<h3>Pymiere Link</h3>
+<div class="row">状态：<span id="status" class="warn">启动中…</span></div>
+<div class="row">监听：<code>http://127.0.0.1:3000</code></div>
+<div class="row" id="ver"></div>
+<div class="row" id="diag"></div>
+<button id="ping">测试执行 ExtendScript</button>
+<div class="log" id="log"></div>
+
+<script>
+/* ============================================================
+   已绕开的三个 CEP 陷阱（本机实测）：
+
+   1) evalScript 走 URL scheme 有长度上限 -> 长代码写文件 + $.evalFile()
+   2) Node 的 http 回调里调 evalScript 不回调 -> 文件轮询中继，
+      执行动作交给浏览器主线程
+   3) ★ ExtendScript 是老编码，中文路径会乱码 -> 所有传给 ExtendScript
+      的路径必须是纯 ASCII，故工作目录挪到 C:/prlink
+      扩展本身仍在中文目录，但只由 Node 读取，不进 ExtendScript
+   ============================================================ */
+(function () {
+    var statusEl = document.getElementById('status');
+    var logEl = document.getElementById('log');
+    var verEl = document.getElementById('ver');
+    var diagEl = document.getElementById('diag');
+    var cs = new CSInterface();
+
+    function log(m) {
+        logEl.textContent += m + '\n';
+        logEl.scrollTop = logEl.scrollHeight;
+    }
+    function fail(m) {
+        statusEl.className = 'err';
+        statusEl.textContent = m;
+        log('[ERROR] ' + m);
+    }
+
+    var fs, path, http;
+    try {
+        fs = require('fs'); path = require('path'); http = require('http');
+    } catch (e) {
+        fail('Node 不可用：' + e); return;
+    }
+    log('[1] node loaded');
+
+    // ---- 扩展路径（含中文，仅供 Node 使用）----
+    var extPath = '';
+    try { extPath = cs.getSystemPath(SystemPath.EXTENSION) || ''; } catch (e) {}
+    extPath = String(extPath)
+        .replace(/^file:\/\//i, '')
+        .replace(/^\/([A-Za-z]):/, '$1:')
+        .replace(/\\/g, '/')
+        .replace(/\/+$/, '');
+    log('[2] ext(仅供node) = ' + extPath);
+
+    // ---- ASCII 工作目录：所有进 ExtendScript 的路径都从这里走 ----
+    var SPOOL = 'C:/prlink';
+    try {
+        if (!fs.existsSync(SPOOL)) fs.mkdirSync(SPOOL);
+    } catch (e) {
+        log('[!] 建 ' + SPOOL + ' 失败: ' + e);
+    }
+    log('[3] spool(ASCII) = ' + SPOOL);
+
+    // 把 polyfill 复制到 ASCII 目录，ExtendScript 才能读
+    var JSX = SPOOL + '/ExtendJSON.jsx';
+    try {
+        fs.writeFileSync(JSX, fs.readFileSync(extPath + '/jsx/ExtendJSON.jsx', 'utf8'), 'utf8');
+        log('[4] polyfill -> ' + JSX);
+    } catch (e) {
+        log('[4] 复制 polyfill 失败: ' + e);
+    }
+
+    /* ---------- 先做最小 evalScript 探测，确认链路 ---------- */
+    var seq = 0;
+    var engineOK = false;
+
+    cs.evalScript('"v" + app.version;', function (r) {
+        log('[5] 最小探测 -> ' + JSON.stringify(r));
+        if (r && r !== 'EvalScript error.') {
+            engineOK = true;
+            verEl.textContent = 'Premiere 版本：' + String(r).replace(/^v/, '');
+            diagEl.innerHTML = '<span class="ok">ExtendScript 引擎正常</span>';
+        } else {
+            diagEl.innerHTML = '<span class="err">evalScript 返回错误</span>';
+        }
+    });
+
+    // 注入 polyfill（探测完成之后再做，避免污染首次探测）
+    setTimeout(function () {
+        if (!engineOK) { log('[6] 引擎不通，跳过注入'); return; }
+        cs.evalScript('$.evalFile("' + JSX + '"); "injected";', function (r) {
+            log('[6] 注入 ExtendJSON -> ' + r);
+        });
+    }, 1500);
+
+    /* ---------- 浏览器主线程：轮询 spool 执行 ---------- */
+    function pump() {
+        var files;
+        try { files = fs.readdirSync(SPOOL); } catch (e) { return; }
+        for (var i = 0; i < files.length; i++) {
+            var n = files[i];
+            if (!/\.req$/.test(n)) continue;
+            var reqFile = SPOOL + '/' + n;
+            var resFile = reqFile.replace(/\.req$/, '.res');
+            var code;
+            try { code = fs.readFileSync(reqFile, 'utf8'); } catch (e) { continue; }
+            try { fs.unlinkSync(reqFile); } catch (e) {}
+
+            (function (code, resFile) {
+                var cmd;
+                if (code.length > 1200) {
+                    var tf = SPOOL + '/t' + (++seq) + '.jsx';
+                    try {
+                        fs.writeFileSync(tf, code, 'utf8');
+                        cmd = 'try{ $.evalFile("' + tf + '"); }catch(e){ String(e) }';
+                    } catch (e) { cmd = code; }
+                } else {
+                    cmd = code;
+                }
+                cs.evalScript(cmd, function (r) {
+                    try {
+                        fs.writeFileSync(resFile, r === undefined || r === null ? '' : String(r), 'utf8');
+                    } catch (e) { log('[!] 写结果失败: ' + e); }
+                });
+            })(code, resFile);
+        }
+    }
+    setInterval(pump, 20);
+
+    /* ---------- HTTP 服务 ---------- */
+    var server = http.createServer(function (req, res) {
+        if (req.method === 'GET') {
+            res.writeHead(200, { 'Content-Type': 'text/plain' });
+            res.end('Premiere is alive');
+            return;
+        }
+        if (req.method !== 'POST') { res.writeHead(405); res.end('only GET/POST'); return; }
+
+        var body = '';
+        req.on('data', function (c) { body += c; });
+        req.on('end', function () {
+            var code;
+            try { code = JSON.parse(body).to_eval || ''; }
+            catch (e) { res.writeHead(400); res.end('bad request body'); return; }
+
+            var id = Date.now() + '_' + (++seq);
+            var reqFile = SPOOL + '/' + id + '.req';
+            var resFile = SPOOL + '/' + id + '.res';
+            try { fs.writeFileSync(reqFile, code, 'utf8'); }
+            catch (e) { res.writeHead(500); res.end('cannot write req'); return; }
+
+            // 坑7：导入大文件(400MB+)时 PR 主线程要去生成峰值文件/一致性分析，
+            // 实测能卡住 2 分钟以上，evalScript 迟迟不回调。等待上限放到 300 秒。
+            var t0 = Date.now();
+            (function poll() {
+                var txt = null;
+                try {
+                    if (fs.existsSync(resFile)) {
+                        txt = fs.readFileSync(resFile, 'utf8');
+                        fs.unlinkSync(resFile);
+                    }
+                } catch (e) {}
+                if (txt !== null) {
+                    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+                    res.end(txt); return;
+                }
+                if (Date.now() - t0 > 300000) { res.writeHead(504); res.end('timeout'); return; }
+                setTimeout(poll, 30);
+            })();
+        });
+    });
+
+    server.on('error', function (e) {
+        if (e.code === 'EADDRINUSE') fail('端口 3000 已被占用');
+        else fail('server error: ' + e.message);
+    });
+
+    server.listen(3000, '127.0.0.1', function () {
+        statusEl.className = 'ok';
+        statusEl.textContent = '已就绪';
+        log('[7] listening on http://127.0.0.1:3000');
+    });
+
+    document.getElementById('ping').onclick = function () {
+        var t = Date.now() + '_ping';
+        fs.writeFileSync(SPOOL + '/' + t + '.req', '"hello " + app.version;', 'utf8');
+        var w = 0;
+        (function p() {
+            if (fs.existsSync(SPOOL + '/' + t + '.res')) {
+                log('ping -> ' + fs.readFileSync(SPOOL + '/' + t + '.res', 'utf8'));
+                try { fs.unlinkSync(SPOOL + '/' + t + '.res'); } catch (e) {}
+                return;
+            }
+            if (w > 5000) { log('ping 超时'); return; }
+            w += 50; setTimeout(p, 50);
+        })();
+    };
+})();
+</script>
+
+</body>
+</html>

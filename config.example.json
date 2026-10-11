@@ -1,0 +1,33 @@
+{
+  "_comment": "复制成 config.json 后改成你自己的路径。所有字段说明见 README。",
+  "project_name": "myfilm",
+  "media_dir": "D:/footage/已复制_项目素材",
+  "shotlist": "剪辑脚本v5_分镜执行表.xlsx",
+  "export_dir": "export",
+  "export_preset": "",
+  "preset_guid": "5e73dd7e-4f86-4917-80eb-08ddb2f4a5f3",
+  "proxy_suffix": "_Proxy",
+  "sequences": [
+    {
+      "sheet": "上部",
+      "title": "A_上部",
+      "ascii_name": "SEQ_A"
+    },
+    {
+      "sheet": "下部",
+      "title": "B_下部",
+      "ascii_name": "SEQ_B"
+    }
+  ],
+  "columns": {
+    "no": 0,
+    "tc": 1,
+    "desc": 2,
+    "snd": 3,
+    "media": 4,
+    "src_in": 5,
+    "src_out": 6,
+    "note": 7,
+    "header_rows": 2
+  }
+}
